@@ -1,0 +1,809 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>FinanceAI</title>
+    <meta
+      name="description"
+      content="FinanceAI - gestão financeira, carteira de investimentos e assistente inteligente."
+    />
+    <script>
+      document.documentElement.dataset.theme = localStorage.getItem("financeai_theme_v1") || "dark";
+    </script>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <canvas id="ambient-canvas" class="ambient-canvas" aria-hidden="true"></canvas>
+    <section id="login-screen" class="login-screen" aria-label="Entrada">
+      <div class="login-shell">
+        <section class="login-card panel">
+          <div class="login-card-header">
+            <div class="login-logo">
+              <span class="brand-mark" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M4 19V5" />
+                  <path d="M4 19h16" />
+                  <path d="M8 16v-5" />
+                  <path d="M12 16V8" />
+                  <path d="M16 16v-3" />
+                </svg>
+              </span>
+              <div>
+                <h1>FinanceAI</h1>
+                <p>Entre para continuar.</p>
+              </div>
+            </div>
+            <button id="login-theme-toggle" class="theme-toggle" type="button" aria-label="Alternar tema">
+              <svg class="theme-icon moon-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a7 7 0 1 0 10.5 10.5Z" />
+              </svg>
+              <svg class="theme-icon sun-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <circle cx="12" cy="12" r="4" />
+                <path d="M12 2v2" />
+                <path d="M12 20v2" />
+                <path d="m4.93 4.93 1.41 1.41" />
+                <path d="m17.66 17.66 1.41 1.41" />
+                <path d="M2 12h2" />
+                <path d="M20 12h2" />
+                <path d="m6.34 17.66-1.41 1.41" />
+                <path d="m19.07 4.93-1.41 1.41" />
+              </svg>
+            </button>
+          </div>
+
+          <form id="login-form" class="stacked-form">
+            <label class="field">
+              <span>E-mail ou nome de usuario</span>
+              <input id="login-email" type="text" placeholder="voce@email.com ou seu nome" autocomplete="username" />
+            </label>
+
+            <label class="field">
+              <span>Senha</span>
+              <span class="password-control">
+                <input id="login-password" type="password" placeholder="Senha da conta" autocomplete="current-password" />
+                <button class="password-toggle" type="button" data-toggle-password="login-password">Mostrar</button>
+              </span>
+            </label>
+
+            <button class="primary-button" type="submit">Entrar</button>
+            <button id="show-reset" class="link-button" type="button">Esqueceu a senha?</button>
+            <button id="show-register" class="ghost-button full-button" type="button">Criar conta</button>
+          </form>
+
+          <form id="register-form" class="stacked-form" hidden>
+            <label class="field">
+              <span>Nome</span>
+              <input id="register-name" type="text" placeholder="Seu nome" autocomplete="name" />
+            </label>
+
+            <label class="field">
+              <span>E-mail</span>
+              <input id="register-email" type="email" placeholder="voce@email.com" autocomplete="email" />
+            </label>
+
+            <label class="field">
+              <span>Senha</span>
+              <span class="password-control">
+                <input id="register-password" type="password" placeholder="Crie uma senha" autocomplete="new-password" />
+                <button class="password-toggle" type="button" data-toggle-password="register-password">Mostrar</button>
+              </span>
+            </label>
+
+            <label class="field">
+              <span>Objetivo principal</span>
+              <select id="register-focus">
+                <option>Organizar gastos</option>
+                <option>Sair das dívidas</option>
+                <option>Montar reserva</option>
+                <option>Começar a investir</option>
+                <option>Aumentar patrimônio</option>
+              </select>
+            </label>
+
+            <div class="form-row">
+              <label class="field">
+                <span>Renda mensal estimada</span>
+                <input id="register-income" type="number" min="0" step="0.01" placeholder="0,00" />
+              </label>
+              <label class="field">
+                <span>Gasto fixo mensal</span>
+                <input id="register-fixed-expenses" type="number" min="0" step="0.01" placeholder="0,00" />
+              </label>
+            </div>
+
+            <label class="field">
+              <span>Perfil de investimento</span>
+              <select id="register-investor-profile">
+                <option>Conservador</option>
+                <option>Moderado</option>
+                <option>Arrojado</option>
+              </select>
+            </label>
+
+            <label id="register-code-field" class="field" hidden>
+              <span>Código recebido por e-mail</span>
+              <input id="register-code" type="text" inputmode="numeric" maxlength="6" placeholder="000000" autocomplete="one-time-code" />
+            </label>
+
+            <p id="register-code-status" class="form-hint" hidden></p>
+
+            <button id="register-submit" class="primary-button" type="submit">Enviar código de cadastro</button>
+            <button id="show-login" class="ghost-button full-button" type="button">Voltar para login</button>
+          </form>
+
+          <form id="reset-form" class="stacked-form" hidden>
+            <label class="field">
+              <span>E-mail da conta</span>
+              <input id="reset-email" type="email" placeholder="voce@email.com" autocomplete="email" />
+            </label>
+
+            <button id="send-reset-code" class="ghost-button full-button" type="button">Enviar código para o e-mail</button>
+
+            <label class="field">
+              <span>Código recebido</span>
+              <input id="reset-code" type="text" inputmode="numeric" maxlength="6" placeholder="000000" autocomplete="one-time-code" />
+            </label>
+
+            <p id="reset-code-status" class="form-hint" hidden></p>
+
+            <label class="field">
+              <span>Nova senha</span>
+              <span class="password-control">
+                <input id="reset-password" type="password" placeholder="Digite a nova senha" autocomplete="new-password" />
+                <button class="password-toggle" type="button" data-toggle-password="reset-password">Mostrar</button>
+              </span>
+            </label>
+
+            <label class="field">
+              <span>Confirmar nova senha</span>
+              <span class="password-control">
+                <input id="reset-confirm-password" type="password" placeholder="Repita a nova senha" autocomplete="new-password" />
+                <button class="password-toggle" type="button" data-toggle-password="reset-confirm-password">Mostrar</button>
+              </span>
+            </label>
+
+            <button class="primary-button" type="submit">Redefinir senha</button>
+            <button id="reset-back-login" class="ghost-button full-button" type="button">Voltar para login</button>
+          </form>
+        </section>
+      </div>
+    </section>
+
+    <div id="app-shell" class="app" hidden>
+      <header class="topbar">
+        <a class="brand" href="#overview" aria-label="FinanceAI">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <path d="M4 19V5" />
+              <path d="M4 19h16" />
+              <path d="M8 16v-5" />
+              <path d="M12 16V8" />
+              <path d="M16 16v-3" />
+            </svg>
+          </span>
+          <span>
+            <strong>FinanceAI</strong>
+            <small>gestão financeira inteligente</small>
+          </span>
+        </a>
+
+        <div class="top-actions">
+          <nav class="tabs" aria-label="Navegação principal">
+            <a href="#overview">Visão geral</a>
+            <a href="#control">Controle</a>
+            <a href="#goals">Metas</a>
+            <a href="#investments">Investimentos</a>
+            <a href="#assistant">Assistente</a>
+            <button id="open-settings" class="icon-tab" type="button" aria-label="Configurações" title="Configurações">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12 15.5A3.5 3.5 0 1 0 12 8a3.5 3.5 0 0 0 0 7.5Z" />
+                <path d="M19.4 15a1.8 1.8 0 0 0 .36 1.98l.06.06a2.1 2.1 0 1 1-2.97 2.97l-.06-.06a1.8 1.8 0 0 0-1.98-.36 1.8 1.8 0 0 0-1.09 1.65V21a2.1 2.1 0 1 1-4.2 0v-.09a1.8 1.8 0 0 0-1.09-1.65 1.8 1.8 0 0 0-1.98.36l-.06.06a2.1 2.1 0 1 1-2.97-2.97l.06-.06a1.8 1.8 0 0 0 .36-1.98 1.8 1.8 0 0 0-1.65-1.09H3a2.1 2.1 0 1 1 0-4.2h.09a1.8 1.8 0 0 0 1.65-1.09 1.8 1.8 0 0 0-.36-1.98l-.06-.06a2.1 2.1 0 1 1 2.97-2.97l.06.06a1.8 1.8 0 0 0 1.98.36 1.8 1.8 0 0 0 1.09-1.65V3a2.1 2.1 0 1 1 4.2 0v.09a1.8 1.8 0 0 0 1.09 1.65 1.8 1.8 0 0 0 1.98-.36l.06-.06a2.1 2.1 0 1 1 2.97 2.97l-.06.06a1.8 1.8 0 0 0-.36 1.98 1.8 1.8 0 0 0 1.65 1.09H21a2.1 2.1 0 1 1 0 4.2h-.09A1.8 1.8 0 0 0 19.4 15Z" />
+              </svg>
+            </button>
+          </nav>
+
+          <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Alternar tema">
+            <svg class="theme-icon moon-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a7 7 0 1 0 10.5 10.5Z" />
+            </svg>
+            <svg class="theme-icon sun-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="12" cy="12" r="4" />
+              <path d="M12 2v2" />
+              <path d="M12 20v2" />
+              <path d="m4.93 4.93 1.41 1.41" />
+              <path d="m17.66 17.66 1.41 1.41" />
+              <path d="M2 12h2" />
+              <path d="M20 12h2" />
+              <path d="m6.34 17.66-1.41 1.41" />
+              <path d="m19.07 4.93-1.41 1.41" />
+            </svg>
+          </button>
+
+          <div class="account">
+            <button id="account-button" class="account-button" type="button" aria-expanded="false" aria-controls="account-menu">
+              <span id="user-avatar" class="user-avatar">EU</span>
+              <span>
+                <strong id="user-label">Entrar</strong>
+                <small id="user-plan">Perfil local</small>
+              </span>
+            </button>
+            <div id="account-menu" class="account-menu" hidden>
+              <p id="account-summary">Entre para personalizar metas e diagnósticos.</p>
+              <button id="open-login" type="button">Trocar conta</button>
+              <button id="logout-button" type="button">Sair</button>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <main>
+        <section id="overview" class="workspace" aria-label="Visão geral">
+          <div class="summary-grid">
+            <article class="metric-card accent-card">
+              <span>Saldo atual</span>
+              <strong id="balance">R$ 0,00</strong>
+              <small id="balance-trend">Sem lançamentos ainda</small>
+            </article>
+            <article class="metric-card income-card">
+              <span>Receitas</span>
+              <strong id="income">R$ 0,00</strong>
+              <small>No mês atual</small>
+            </article>
+            <article class="metric-card expense-card">
+              <span>Despesas</span>
+              <strong id="expenses" class="negative">R$ 0,00</strong>
+              <small id="expense-ratio">0% das receitas</small>
+            </article>
+            <article class="metric-card">
+              <span>Orçamento diário</span>
+              <strong id="daily-budget">R$ 0,00</strong>
+              <small id="days-left">0 dias restantes</small>
+            </article>
+          </div>
+
+          <div class="decision-grid" aria-label="Decisões financeiras rápidas">
+            <article class="decision-card primary-decision">
+              <span>Decisão de hoje</span>
+              <strong id="decision-today">Cadastre sua renda</strong>
+              <p id="decision-today-detail">O app calcula seu limite diário assim que houver dados.</p>
+            </article>
+            <article class="decision-card">
+              <span>Ponto de atenção</span>
+              <strong id="decision-category">Sem despesas</strong>
+              <p id="decision-category-detail">Adicione gastos para descobrir onde o dinheiro está indo.</p>
+            </article>
+            <article class="decision-card">
+              <span>Próximo passo</span>
+              <strong id="decision-goal">Crie uma meta</strong>
+              <p id="decision-goal-detail">Metas deixam o assistente mais preciso nas recomendações.</p>
+            </article>
+          </div>
+
+          <div class="content-grid">
+            <section class="panel">
+              <div class="panel-heading">
+                <h1>Fluxo de caixa</h1>
+                <span id="month-label"></span>
+              </div>
+
+              <form id="transaction-form" class="stacked-form">
+                <div class="segmented-control" role="group" aria-label="Tipo da transação">
+                  <button class="type-button" type="button" data-type="income" aria-pressed="false">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="m12 19-7-7" />
+                      <path d="m12 19 7-7" />
+                      <path d="M12 5v14" />
+                    </svg>
+                    Receita
+                  </button>
+                  <button class="type-button active expense" type="button" data-type="expense" aria-pressed="true">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="m12 5-7 7" />
+                      <path d="m12 5 7 7" />
+                      <path d="M12 5v14" />
+                    </svg>
+                    Despesa
+                  </button>
+                </div>
+
+                <label class="field">
+                  <span>Descrição</span>
+                  <input id="description" type="text" placeholder="Ex: salário, mercado, aluguel" autocomplete="off" />
+                </label>
+
+                <div class="form-row">
+                  <label class="field">
+                    <span>Categoria</span>
+                    <select id="category">
+                      <option>Casa</option>
+                      <option>Alimentação</option>
+                      <option>Transporte</option>
+                      <option>Saúde</option>
+                      <option>Educação</option>
+                      <option>Lazer</option>
+                      <option>Investimentos</option>
+                      <option>Receita</option>
+                      <option>Outros</option>
+                    </select>
+                  </label>
+                  <label class="field">
+                    <span>Valor</span>
+                    <input id="amount" type="number" min="0" step="0.01" placeholder="0,00" />
+                  </label>
+                </div>
+
+                <button class="primary-button" type="submit">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M12 5v14" />
+                    <path d="M5 12h14" />
+                  </svg>
+                  Adicionar lançamento
+                </button>
+              </form>
+            </section>
+
+            <section class="panel list-panel">
+              <div class="panel-heading">
+                <h2>Transações recentes</h2>
+                <button id="clear-data" class="ghost-button" type="button">Limpar</button>
+              </div>
+              <div id="transaction-list" class="empty-state">Nenhuma transação cadastrada.</div>
+            </section>
+
+            <section class="panel">
+              <div class="panel-heading">
+                <h2>Gastos por categoria</h2>
+                <span id="top-category">Sem dados</span>
+              </div>
+              <div id="category-chart" class="empty-state">Cadastre despesas para ver a distribuição.</div>
+            </section>
+
+            <section class="panel">
+              <div class="panel-heading">
+                <h2>Previsão do mês</h2>
+                <span id="forecast-label">Em aberto</span>
+              </div>
+              <div class="forecast-grid">
+                <article>
+                  <span>Gasto médio/dia</span>
+                  <strong id="daily-rate">R$ 0,00</strong>
+                </article>
+                <article>
+                  <span>Projeção final</span>
+                  <strong id="projected-balance">R$ 0,00</strong>
+                </article>
+                <article>
+                  <span>Perfil</span>
+                  <strong id="profile-name">Indefinido</strong>
+                </article>
+                <article>
+                  <span>Reserva sugerida</span>
+                  <strong id="emergency-target">R$ 0,00</strong>
+                </article>
+              </div>
+              <p id="profile-description" class="panel-note">Adicione receitas e despesas para montar seu diagnóstico.</p>
+            </section>
+          </div>
+        </section>
+
+        <section id="control" class="workspace" aria-label="Controle financeiro">
+          <div class="section-heading">
+            <div>
+              <h2>Controle financeiro</h2>
+              <p>Importe dados, configure categorias, acompanhe limites e gere um relatório do mês.</p>
+            </div>
+            <div class="section-actions">
+              <button id="privacy-toggle" class="ghost-button" type="button">Ocultar valores</button>
+              <button id="print-report" class="ghost-button" type="button">Gerar planilha</button>
+            </div>
+          </div>
+
+          <div class="control-grid">
+            <section class="panel">
+              <div class="panel-heading">
+                <h2>Resumo mensal</h2>
+                <span id="monthly-status">Sem comparação</span>
+              </div>
+              <div id="monthly-insights" class="insight-list"></div>
+            </section>
+
+            <section class="panel">
+              <div class="panel-heading">
+                <h2>Importar extrato</h2>
+                <span id="import-status">CSV</span>
+              </div>
+              <label class="field">
+                <span>Arquivo CSV</span>
+                <input id="csv-file" type="file" accept=".csv,text/csv" />
+              </label>
+              <p class="panel-note">Colunas aceitas: descrição, valor, tipo, categoria e data. Também funciona com vírgula ou ponto e vírgula.</p>
+            </section>
+
+            <section class="panel">
+              <div class="panel-heading">
+                <h2>Categorias</h2>
+                <span id="category-count">0</span>
+              </div>
+              <form id="category-form" class="inline-form">
+                <input id="new-category" type="text" placeholder="Nova categoria" autocomplete="off" />
+                <button class="primary-button" type="submit">Adicionar</button>
+              </form>
+              <div id="category-manager" class="chip-list"></div>
+            </section>
+
+            <section class="panel">
+              <div class="panel-heading">
+                <h2>Orçamento por categoria</h2>
+                <span id="budget-status">Sem limites</span>
+              </div>
+              <form id="budget-form" class="inline-form budget-form">
+                <select id="budget-category"></select>
+                <input id="budget-amount" type="number" min="0" step="0.01" placeholder="Limite R$" />
+                <button class="primary-button" type="submit">Salvar</button>
+              </form>
+              <div id="budget-list" class="budget-list"></div>
+            </section>
+          </div>
+        </section>
+
+        <section id="goals" class="workspace" aria-label="Metas financeiras">
+          <div class="section-heading">
+            <div>
+              <h2>Metas financeiras</h2>
+              <p>Planeje objetivos, acompanhe progresso e deixe o assistente usar isso nas recomendações.</p>
+            </div>
+            <span id="goal-health" class="disclaimer">Sem metas cadastradas.</span>
+          </div>
+
+          <div class="goals-grid">
+            <section class="panel">
+              <form id="goal-form" class="stacked-form">
+                <label class="field">
+                  <span>Nome da meta</span>
+                  <input id="goal-name" type="text" placeholder="Ex: reserva de emergência, viagem, quitar cartão" autocomplete="off" />
+                </label>
+
+                <div class="form-row">
+                  <label class="field">
+                    <span>Tipo</span>
+                    <select id="goal-kind">
+                      <option>Reserva</option>
+                      <option>Dívida</option>
+                      <option>Compra planejada</option>
+                      <option>Investimento</option>
+                      <option>Viagem</option>
+                      <option>Outro</option>
+                    </select>
+                  </label>
+                  <label class="field">
+                    <span>Prazo</span>
+                    <input id="goal-date" type="date" />
+                  </label>
+                </div>
+
+                <div class="form-row">
+                  <label class="field">
+                    <span>Objetivo</span>
+                    <input id="goal-target" type="number" min="0" step="0.01" placeholder="0,00" />
+                  </label>
+                  <label class="field">
+                    <span>Já guardado</span>
+                    <input id="goal-current" type="number" min="0" step="0.01" placeholder="0,00" />
+                  </label>
+                </div>
+
+                <button class="primary-button" type="submit">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M12 5v14" />
+                    <path d="M5 12h14" />
+                  </svg>
+                  Criar meta
+                </button>
+              </form>
+            </section>
+
+            <section class="panel goals-panel">
+              <div class="goals-summary">
+                <article>
+                  <span>Total das metas</span>
+                  <strong id="goals-target">R$ 0,00</strong>
+                </article>
+                <article>
+                  <span>Progresso geral</span>
+                  <strong id="goals-progress">0,00%</strong>
+                </article>
+                <article>
+                  <span>Aporte sugerido</span>
+                  <strong id="goals-monthly">R$ 0,00</strong>
+                </article>
+              </div>
+              <div id="goal-list" class="empty-state">Cadastre uma meta para acompanhar o progresso.</div>
+            </section>
+          </div>
+        </section>
+
+        <section id="investments" class="workspace" aria-label="Investimentos">
+          <div class="section-heading">
+            <div>
+              <h2>Carteira de investimentos</h2>
+              <p>Controle aportes, valor atual, retorno e alocação por classe de ativo.</p>
+            </div>
+            <span class="disclaimer">Conteúdo educativo, não recomendação individual.</span>
+          </div>
+
+          <div class="investment-grid">
+            <section class="panel">
+              <form id="investment-form" class="stacked-form">
+                <label class="field">
+                  <span>Ativo</span>
+                  <input id="asset-name" type="text" placeholder="Ex: Tesouro Selic, CDB, ETF" autocomplete="off" />
+                </label>
+
+                <div class="form-row">
+                  <label class="field">
+                    <span>Classe</span>
+                    <select id="asset-class">
+                      <option>Reserva</option>
+                      <option>Renda fixa</option>
+                      <option>Fundos</option>
+                      <option>Ações</option>
+                      <option>FIIs</option>
+                      <option>Exterior</option>
+                      <option>Cripto</option>
+                    </select>
+                  </label>
+                  <label class="field">
+                    <span>Risco</span>
+                    <select id="asset-risk">
+                      <option>Baixo</option>
+                      <option>Médio</option>
+                      <option>Alto</option>
+                    </select>
+                  </label>
+                </div>
+
+                <div class="form-row">
+                  <label class="field">
+                    <span>Investido</span>
+                    <input id="asset-invested" type="number" min="0" step="0.01" placeholder="0,00" />
+                  </label>
+                  <label class="field">
+                    <span>Valor atual</span>
+                    <input id="asset-current" type="number" min="0" step="0.01" placeholder="0,00" />
+                  </label>
+                </div>
+
+                <button class="primary-button" type="submit">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M12 5v14" />
+                    <path d="M5 12h14" />
+                  </svg>
+                  Adicionar investimento
+                </button>
+              </form>
+            </section>
+
+            <section class="panel portfolio-panel">
+              <div class="portfolio-summary">
+                <article>
+                  <span>Patrimônio investido</span>
+                  <strong id="portfolio-current">R$ 0,00</strong>
+                </article>
+                <article>
+                  <span>Resultado</span>
+                  <strong id="portfolio-return">R$ 0,00</strong>
+                </article>
+                <article>
+                  <span>Rentabilidade</span>
+                  <strong id="portfolio-return-rate">0,00%</strong>
+                </article>
+              </div>
+              <div id="investment-list" class="empty-state">Sua carteira ainda está vazia.</div>
+            </section>
+
+            <section class="panel">
+              <div class="panel-heading">
+                <h2>Alocação</h2>
+                <span id="allocation-status">Sem carteira</span>
+              </div>
+              <div id="allocation-chart" class="empty-state">Adicione ativos para visualizar a alocação.</div>
+            </section>
+
+            <section class="panel">
+              <div class="panel-heading">
+                <h2>Próximos passos</h2>
+                <span id="investment-profile">Conservador</span>
+              </div>
+              <div id="recommendations" class="recommendation-list"></div>
+            </section>
+          </div>
+        </section>
+
+        <section id="assistant" class="workspace" aria-label="Assistente financeiro">
+          <div class="assistant-layout">
+            <section class="panel assistant-panel">
+              <div class="panel-heading">
+                <div>
+                  <h2>Assistente FinanceAI</h2>
+                  <span id="assistant-mode">Modo local</span>
+                </div>
+                <span class="status-dot" aria-hidden="true"></span>
+              </div>
+
+              <div id="chat-messages" class="chat-messages" aria-live="polite"></div>
+
+              <div class="prompt-row" aria-label="Perguntas rápidas">
+                <button type="button" data-prompt="Faça um diagnóstico da minha saúde financeira deste mês.">Saúde financeira</button>
+                <button type="button" data-prompt="Onde posso economizar sem prejudicar minhas metas?">Economizar</button>
+                <button type="button" data-prompt="Quanto falta para minha principal meta e qual aporte ideal?">Meta principal</button>
+                <button type="button" data-prompt="Minha carteira de investimentos está equilibrada para meu perfil?">Carteira</button>
+                <button type="button" data-prompt="Monte um plano de próximos passos para os próximos 30 dias.">Plano 30 dias</button>
+              </div>
+
+              <form id="chat-form" class="chat-form">
+                <label class="sr-only" for="chat-input">Mensagem</label>
+                <input id="chat-input" type="text" placeholder="Pergunte sobre saldo, gastos, metas ou investimentos" autocomplete="off" />
+                <button class="send-button" type="submit" aria-label="Enviar mensagem">
+                  <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="m22 2-7 20-4-9-9-4Z" />
+                    <path d="M22 2 11 13" />
+                  </svg>
+                </button>
+              </form>
+            </section>
+
+            <aside class="panel insight-panel">
+              <h2>Contexto enviado ao assistente</h2>
+              <dl>
+                <div>
+                  <dt>Saldo</dt>
+                  <dd id="context-balance">R$ 0,00</dd>
+                </div>
+                <div>
+                  <dt>Despesas</dt>
+                  <dd id="context-expenses">R$ 0,00</dd>
+                </div>
+                <div>
+                  <dt>Lançamentos</dt>
+                  <dd id="context-transactions">0 itens</dd>
+                </div>
+                <div>
+                  <dt>Carteira</dt>
+                  <dd id="context-portfolio">R$ 0,00</dd>
+                </div>
+                <div>
+                  <dt>Maior categoria</dt>
+                  <dd id="context-category">Sem dados</dd>
+                </div>
+                <div>
+                  <dt>Meta principal</dt>
+                  <dd id="context-goal">Sem metas</dd>
+                </div>
+              </dl>
+            </aside>
+          </div>
+        </section>
+
+        <section id="settings-screen" class="settings-screen" aria-label="Configurações" hidden>
+          <header class="settings-topbar">
+            <button id="close-settings" class="ghost-button" type="button">Voltar</button>
+            <div>
+              <strong>Configurações</strong>
+              <small>Preferências e segurança da conta</small>
+            </div>
+          </header>
+
+          <div class="section-heading">
+            <div>
+              <h2>Configurações</h2>
+              <p>Preferências, segurança da conta e ações de apresentação.</p>
+            </div>
+          </div>
+
+          <div class="settings-grid">
+            <section class="panel settings-panel">
+              <div class="panel-heading">
+                <div>
+                  <h2>Aparência</h2>
+                  <span id="settings-theme-label">Tema atual</span>
+                </div>
+              </div>
+              <button id="settings-theme-toggle" class="primary-button" type="button">Alternar tema</button>
+              <button id="settings-privacy-toggle" class="ghost-button full-button" type="button">Ocultar valores</button>
+            </section>
+
+            <section class="panel settings-panel">
+              <div class="panel-heading">
+                <div>
+                  <h2>Conta</h2>
+                  <span id="settings-account-label">Usuário conectado</span>
+                </div>
+              </div>
+              <form id="password-form" class="stacked-form">
+                <label class="field">
+                  <span>Senha atual</span>
+                  <input id="current-password" type="password" autocomplete="current-password" />
+                </label>
+                <label class="field">
+                  <span>Nova senha</span>
+                  <input id="new-password" type="password" autocomplete="new-password" />
+                </label>
+                <button class="primary-button" type="submit">Trocar senha</button>
+              </form>
+            </section>
+
+            <section class="panel settings-panel">
+              <div class="panel-heading">
+                <div>
+                  <h2>Dados</h2>
+                  <span>Ferramentas para apresentação</span>
+                </div>
+              </div>
+              <button id="settings-print-report" class="ghost-button full-button" type="button">Gerar planilha</button>
+              <button id="settings-clear-data" class="ghost-button full-button" type="button">Limpar dados financeiros</button>
+            </section>
+
+            <section class="panel settings-panel danger-panel">
+              <div class="panel-heading">
+                <div>
+                  <h2>Zona crítica</h2>
+                  <span>Esta ação remove a conta e seus dados</span>
+                </div>
+              </div>
+              <button id="delete-account" class="danger-button" type="button">Excluir conta</button>
+            </section>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <div id="login-required-modal" class="modal-backdrop" hidden>
+      <section class="modal login-required-modal" role="dialog" aria-modal="true" aria-labelledby="login-required-title">
+        <div class="modal-heading">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24">
+              <path d="M4 19V5" />
+              <path d="M4 19h16" />
+              <path d="M8 16v-5" />
+              <path d="M12 16V8" />
+              <path d="M16 16v-3" />
+            </svg>
+          </span>
+          <div>
+            <h2 id="login-required-title">Faça login para continuar</h2>
+            <p>É necessário fazer login para mexer nos dados, usar as ferramentas e personalizar o dashboard.</p>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button id="login-required-close" class="ghost-button" type="button">Continuar vendo</button>
+          <button id="login-required-action" class="primary-button" type="button">Fazer login</button>
+        </div>
+      </section>
+    </div>
+
+    <div id="app-dialog" class="modal-backdrop" hidden>
+      <section class="modal app-dialog" role="dialog" aria-modal="true" aria-labelledby="app-dialog-title">
+        <div class="modal-heading">
+          <span class="dialog-icon" aria-hidden="true">!</span>
+          <div>
+            <h2 id="app-dialog-title">Confirmar aÃ§Ã£o</h2>
+            <p id="app-dialog-message">Tem certeza?</p>
+          </div>
+        </div>
+        <label id="app-dialog-password-field" class="field" hidden>
+          <span>Senha</span>
+          <input id="app-dialog-password" type="password" placeholder="Digite sua senha" autocomplete="current-password" />
+        </label>
+        <div class="modal-actions">
+          <button id="app-dialog-cancel" class="ghost-button" type="button">Cancelar</button>
+          <button id="app-dialog-confirm" class="primary-button" type="button">Confirmar</button>
+        </div>
+      </section>
+    </div>
+
+    <div id="toast-stack" class="toast-stack" aria-live="polite" aria-atomic="true"></div>
+
+    <script src="script.js"></script>
+  </body>
+</html>
