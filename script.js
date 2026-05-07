@@ -405,14 +405,17 @@ function getMonthLabel() {
 function getSummary() {
   const currentMonth = getSelectedMonthRange();
   const monthlyTransactions = state.transactions.filter((item) => isDateInRange(item.date, currentMonth));
-  const income = monthlyTransactions
+  const loggedIncome = monthlyTransactions
     .filter((item) => item.type === "income")
     .reduce((sum, item) => sum + item.amount, 0);
+  const estimatedIncome = Number(state.user?.income || 0);
+  const income = loggedIncome > 0 ? loggedIncome : estimatedIncome;
   const transactionExpenses = monthlyTransactions
     .filter((item) => item.type === "expense")
     .reduce((sum, item) => sum + item.amount, 0);
+  const fixedExpenses = Math.max(0, Number(state.user?.fixedExpenses || 0));
   const investmentOutflow = getInvestmentOutflowForRange(currentMonth);
-  const expenses = transactionExpenses + investmentOutflow;
+  const expenses = transactionExpenses + fixedExpenses + investmentOutflow;
   const daysLeft = getDaysLeft();
   const dailyRate = expenses / getElapsedDays();
   const balance = income - expenses;
@@ -420,8 +423,11 @@ function getSummary() {
 
   return {
     income,
+    loggedIncome,
+    estimatedIncome,
     expenses,
     transactionExpenses,
+    fixedExpenses,
     investmentOutflow,
     balance,
     daysLeft,
@@ -492,7 +498,8 @@ function getCategoryGroups() {
   const currentMonth = getSelectedMonthRange();
   const expenses = state.transactions.filter((item) => item.type === "expense" && isDateInRange(item.date, currentMonth));
   const investmentOutflow = getInvestmentOutflowForRange(currentMonth);
-  const total = expenses.reduce((sum, item) => sum + item.amount, 0) + investmentOutflow;
+  const fixedExpenses = Math.max(0, Number(state.user?.fixedExpenses || 0));
+  const total = expenses.reduce((sum, item) => sum + item.amount, 0) + fixedExpenses + investmentOutflow;
   const groups = expenses.reduce((acc, item) => {
     acc[item.category] = (acc[item.category] || 0) + item.amount;
     return acc;
@@ -500,6 +507,10 @@ function getCategoryGroups() {
 
   if (investmentOutflow > 0) {
     groups.Investimentos = (groups.Investimentos || 0) + investmentOutflow;
+  }
+
+  if (fixedExpenses > 0) {
+    groups["Gastos fixos"] = (groups["Gastos fixos"] || 0) + fixedExpenses;
   }
 
   return Object.entries(groups)
@@ -529,9 +540,11 @@ function isDateInRange(date, range) {
 
 function getSummaryForRange(range) {
   const items = state.transactions.filter((item) => isDateInRange(item.date, range));
-  const income = items.filter((item) => item.type === "income").reduce((sum, item) => sum + item.amount, 0);
+  const loggedIncome = items.filter((item) => item.type === "income").reduce((sum, item) => sum + item.amount, 0);
+  const income = loggedIncome > 0 ? loggedIncome : Number(state.user?.income || 0);
   const expenses =
     items.filter((item) => item.type === "expense").reduce((sum, item) => sum + item.amount, 0) +
+    Math.max(0, Number(state.user?.fixedExpenses || 0)) +
     getInvestmentOutflowForRange(range);
   return {
     income,
@@ -1486,12 +1499,14 @@ function renderSummary() {
   elements.balance.classList.toggle("negative", summary.balance < 0);
   elements.balance.classList.toggle("positive", summary.balance >= 0);
   elements.balanceTrend.textContent =
-    summary.balance >= 0 ? "Você está no positivo" : "Saldo negativo no mês";
+    summary.loggedIncome > 0
+      ? summary.balance >= 0 ? "Você está no positivo" : "Saldo negativo no mês"
+      : "Usando renda estimada do perfil";
   elements.income.textContent = formatCurrency(summary.income);
   elements.expenses.textContent = formatCurrency(summary.expenses);
   elements.expenseRatio.textContent =
-    summary.investmentOutflow > 0
-      ? `${ratio} das receitas, incluindo ${formatCurrency(summary.investmentOutflow)} aplicado`
+    summary.fixedExpenses > 0 || summary.investmentOutflow > 0
+      ? `${ratio} das receitas, incluindo fixos ${formatCurrency(summary.fixedExpenses)} e aportes ${formatCurrency(summary.investmentOutflow)}`
       : `${ratio} das receitas`;
   elements.dailyBudget.textContent = formatCurrency(summary.dailyBudget);
   elements.daysLeft.textContent = `${summary.daysLeft} dias restantes`;
@@ -1518,6 +1533,9 @@ function renderDashboardDecisions(summary) {
   if (summary.income <= 0) {
     elements.decisionToday.textContent = "Cadastre sua renda";
     elements.decisionTodayDetail.textContent = "Com a renda registrada, o app calcula limite diário e previsão do mês.";
+  } else if (summary.loggedIncome <= 0 && summary.estimatedIncome > 0) {
+    elements.decisionToday.textContent = `Planeje com ${formatCurrency(summary.dailyBudget)}/dia`;
+    elements.decisionTodayDetail.textContent = "Calculado pela renda estimada do cadastro. Lance a receita real quando ela entrar.";
   } else if (summary.balance <= 0) {
     elements.decisionToday.textContent = "Recupere o caixa";
     elements.decisionTodayDetail.textContent = `Faltam ${formatCurrency(Math.abs(summary.balance))} para fechar o mês no positivo.`;
@@ -1777,6 +1795,12 @@ function getSmartAlerts() {
 
   if (summary.income <= 0) {
     alerts.push({ tone: "warning", title: "Renda não cadastrada", text: "Cadastre uma receita para o app calcular limite diário e previsão." });
+  } else if (summary.loggedIncome <= 0 && summary.estimatedIncome > 0) {
+    alerts.push({ tone: "warning", title: "Usando renda estimada", text: "A previsão usa a renda informada no cadastro até você lançar a receita real do mês." });
+  }
+
+  if (summary.fixedExpenses > 0) {
+    alerts.push({ tone: "positive", title: "Gastos fixos considerados", text: `${formatCurrency(summary.fixedExpenses)} de compromissos fixos entraram no cálculo do mês.` });
   }
 
   if (summary.projectedBalance < 0) {
@@ -2068,6 +2092,8 @@ function buildSnapshot() {
       receitas: formatCurrency(summary.income),
       despesas: formatCurrency(summary.expenses),
       despesasSemInvestimentos: formatCurrency(summary.transactionExpenses),
+      gastoFixoMensalDoPerfil: formatCurrency(summary.fixedExpenses),
+      rendaUsadaNoPlanejamento: summary.loggedIncome > 0 ? "receitas lançadas no mês" : "renda mensal estimada do perfil",
       aportesEmInvestimentosNoMes: formatCurrency(summary.investmentOutflow),
       orcamentoDiario: formatCurrency(summary.dailyBudget),
       gastoMedioDia: formatCurrency(summary.dailyRate),
