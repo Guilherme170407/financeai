@@ -416,6 +416,11 @@ html[data-theme="dark"] .ghost-button:hover {
   transition: transform 0.16s ease, background 0.16s ease, color 0.16s ease;
 }
 
+html[data-theme="dark"] .theme-toggle {
+  background: var(--surface);
+  box-shadow: none;
+}
+
 .theme-toggle:hover {
   background: var(--surface-2);
   transform: translateY(-1px);
@@ -449,8 +454,16 @@ html:not([data-theme="dark"]) .moon-icon {
   text-align: left;
 }
 
+html[data-theme="dark"] .account-button {
+  background: var(--surface);
+}
+
 .account-button:hover {
   background: #f9fbfd;
+}
+
+html[data-theme="dark"] .account-button:hover {
+  background: var(--surface-2);
 }
 
 .user-avatar {
@@ -619,14 +632,26 @@ html[data-theme="dark"] .panel::before {
   background: linear-gradient(135deg, #ffffff, rgba(103, 80, 201, 0.09));
 }
 
+html[data-theme="dark"] .accent-card {
+  background: linear-gradient(135deg, var(--surface), var(--purple-soft));
+}
+
 .income-card {
   border-color: color-mix(in srgb, var(--income) 38%, var(--line));
   background: linear-gradient(135deg, rgba(14, 165, 132, 0.13), #ffffff 72%);
 }
 
+html[data-theme="dark"] .income-card {
+  background: linear-gradient(135deg, var(--income-soft), var(--surface));
+}
+
 .expense-card {
   border-color: color-mix(in srgb, var(--expense) 34%, var(--line));
   background: linear-gradient(135deg, rgba(220, 63, 75, 0.12), #ffffff 72%);
+}
+
+html[data-theme="dark"] .expense-card {
+  background: linear-gradient(135deg, var(--expense-soft), var(--surface));
 }
 
 .decision-grid {
@@ -669,6 +694,10 @@ html[data-theme="dark"] .panel::before {
 .primary-decision {
   border-color: var(--line-strong);
   background: linear-gradient(135deg, rgba(14, 165, 132, 0.13), #ffffff 72%);
+}
+
+html[data-theme="dark"] .primary-decision {
+  background: linear-gradient(135deg, var(--income-soft), var(--surface));
 }
 
 .positive {
