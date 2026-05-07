@@ -7,9 +7,8 @@ COPY server.js ./
 COPY index.html ./
 COPY script.js ./
 COPY styles.css ./
-COPY CONFIGURAR_EMAIL.md ./
+COPY README.md ./
 COPY abrir-site.cmd ./
-COPY start-site.cmd ./
 
 ENV NODE_ENV=production
 

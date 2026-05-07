@@ -1499,14 +1499,12 @@ function renderSummary() {
   elements.balance.classList.toggle("negative", summary.balance < 0);
   elements.balance.classList.toggle("positive", summary.balance >= 0);
   elements.balanceTrend.textContent =
-    summary.loggedIncome > 0
-      ? summary.balance >= 0 ? "Você está no positivo" : "Saldo negativo no mês"
-      : "Usando renda estimada do perfil";
+    summary.balance >= 0 ? "Você está no positivo" : "Saldo negativo no mês";
   elements.income.textContent = formatCurrency(summary.income);
   elements.expenses.textContent = formatCurrency(summary.expenses);
   elements.expenseRatio.textContent =
-    summary.fixedExpenses > 0 || summary.investmentOutflow > 0
-      ? `${ratio} das receitas, incluindo fixos ${formatCurrency(summary.fixedExpenses)} e aportes ${formatCurrency(summary.investmentOutflow)}`
+    summary.investmentOutflow > 0
+      ? `${ratio} das receitas, incluindo ${formatCurrency(summary.investmentOutflow)} aplicado`
       : `${ratio} das receitas`;
   elements.dailyBudget.textContent = formatCurrency(summary.dailyBudget);
   elements.daysLeft.textContent = `${summary.daysLeft} dias restantes`;
@@ -1533,9 +1531,6 @@ function renderDashboardDecisions(summary) {
   if (summary.income <= 0) {
     elements.decisionToday.textContent = "Cadastre sua renda";
     elements.decisionTodayDetail.textContent = "Com a renda registrada, o app calcula limite diário e previsão do mês.";
-  } else if (summary.loggedIncome <= 0 && summary.estimatedIncome > 0) {
-    elements.decisionToday.textContent = `Planeje com ${formatCurrency(summary.dailyBudget)}/dia`;
-    elements.decisionTodayDetail.textContent = "Calculado pela renda estimada do cadastro. Lance a receita real quando ela entrar.";
   } else if (summary.balance <= 0) {
     elements.decisionToday.textContent = "Recupere o caixa";
     elements.decisionTodayDetail.textContent = `Faltam ${formatCurrency(Math.abs(summary.balance))} para fechar o mês no positivo.`;
@@ -1795,12 +1790,6 @@ function getSmartAlerts() {
 
   if (summary.income <= 0) {
     alerts.push({ tone: "warning", title: "Renda não cadastrada", text: "Cadastre uma receita para o app calcular limite diário e previsão." });
-  } else if (summary.loggedIncome <= 0 && summary.estimatedIncome > 0) {
-    alerts.push({ tone: "warning", title: "Usando renda estimada", text: "A previsão usa a renda informada no cadastro até você lançar a receita real do mês." });
-  }
-
-  if (summary.fixedExpenses > 0) {
-    alerts.push({ tone: "positive", title: "Gastos fixos considerados", text: `${formatCurrency(summary.fixedExpenses)} de compromissos fixos entraram no cálculo do mês.` });
   }
 
   if (summary.projectedBalance < 0) {
@@ -2092,8 +2081,6 @@ function buildSnapshot() {
       receitas: formatCurrency(summary.income),
       despesas: formatCurrency(summary.expenses),
       despesasSemInvestimentos: formatCurrency(summary.transactionExpenses),
-      gastoFixoMensalDoPerfil: formatCurrency(summary.fixedExpenses),
-      rendaUsadaNoPlanejamento: summary.loggedIncome > 0 ? "receitas lançadas no mês" : "renda mensal estimada do perfil",
       aportesEmInvestimentosNoMes: formatCurrency(summary.investmentOutflow),
       orcamentoDiario: formatCurrency(summary.dailyBudget),
       gastoMedioDia: formatCurrency(summary.dailyRate),
@@ -2699,15 +2686,117 @@ function renderChatMessage(role, content) {
   const row = document.createElement("div");
   row.className = `message-row ${role === "user" ? "user" : "assistant"}`;
 
-  const text = escapeHtml(content);
   if (role === "user") {
+    const text = escapeHtml(content);
     row.innerHTML = `<div class="message user">${text}</div><span class="avatar">EU</span>`;
   } else {
+    const text = formatAssistantContent(content);
     row.innerHTML = `<span class="avatar">AI</span><div class="message">${text}</div>`;
   }
 
   elements.chatMessages.appendChild(row);
   elements.chatMessages.scrollTop = elements.chatMessages.scrollHeight;
+}
+
+function formatAssistantContent(content) {
+  const lines = String(content || "").replace(/\r\n/g, "\n").split("\n");
+  const blocks = [];
+  let paragraph = [];
+
+  function flushParagraph() {
+    if (!paragraph.length) {
+      return;
+    }
+
+    blocks.push(`<p>${formatInlineMarkdown(paragraph.join(" "))}</p>`);
+    paragraph = [];
+  }
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index].trim();
+
+    if (!line) {
+      flushParagraph();
+      continue;
+    }
+
+    if (isMarkdownTableStart(lines, index)) {
+      flushParagraph();
+      const tableLines = [];
+      while (index < lines.length && isMarkdownTableLine(lines[index])) {
+        tableLines.push(lines[index].trim());
+        index += 1;
+      }
+      index -= 1;
+      blocks.push(formatMarkdownTable(tableLines));
+      continue;
+    }
+
+    if (/^#{1,4}\s+/.test(line)) {
+      flushParagraph();
+      blocks.push(`<strong class="message-title">${formatInlineMarkdown(line.replace(/^#{1,4}\s+/, ""))}</strong>`);
+      continue;
+    }
+
+    if (/^[-*]\s+/.test(line)) {
+      flushParagraph();
+      const items = [];
+      while (index < lines.length && /^[-*]\s+/.test(lines[index].trim())) {
+        items.push(`<li>${formatInlineMarkdown(lines[index].trim().replace(/^[-*]\s+/, ""))}</li>`);
+        index += 1;
+      }
+      index -= 1;
+      blocks.push(`<ul>${items.join("")}</ul>`);
+      continue;
+    }
+
+    paragraph.push(line);
+  }
+
+  flushParagraph();
+  return blocks.join("") || escapeHtml(content);
+}
+
+function isMarkdownTableStart(lines, index) {
+  return isMarkdownTableLine(lines[index]) && isMarkdownSeparatorLine(lines[index + 1] || "");
+}
+
+function isMarkdownTableLine(line) {
+  return /^\s*\|.+\|\s*$/.test(String(line || ""));
+}
+
+function isMarkdownSeparatorLine(line) {
+  return /^\s*\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)+\|?\s*$/.test(String(line || ""));
+}
+
+function formatMarkdownTable(lines) {
+  const rows = lines
+    .filter((line) => !isMarkdownSeparatorLine(line))
+    .map((line) =>
+      line
+        .replace(/^\s*\|/, "")
+        .replace(/\|\s*$/, "")
+        .split("|")
+        .map((cell) => formatInlineMarkdown(cell.trim())),
+    );
+
+  if (!rows.length) {
+    return "";
+  }
+
+  const [head, ...body] = rows;
+  const header = `<thead><tr>${head.map((cell) => `<th>${cell}</th>`).join("")}</tr></thead>`;
+  const tableBody = body.length
+    ? `<tbody>${body.map((row) => `<tr>${row.map((cell) => `<td>${cell}</td>`).join("")}</tr>`).join("")}</tbody>`
+    : "";
+
+  return `<div class="message-table-wrap"><table>${header}${tableBody}</table></div>`;
+}
+
+function formatInlineMarkdown(text) {
+  return escapeHtml(text)
+    .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+    .replace(/`([^`]+)`/g, "<code>$1</code>");
 }
 
 async function sendChatMessage(event) {
@@ -2764,7 +2853,23 @@ async function askServerAssistant(message) {
   }
 
   const data = await response.json();
+  updateAssistantProvider(data.provider, data.model);
   return data.answer;
+}
+
+function updateAssistantProvider(provider, model) {
+  if (!provider) {
+    return;
+  }
+
+  const label = provider.toUpperCase();
+  elements.assistantMode.textContent = `${label} configurado`;
+  elements.settingsAiLabel.textContent = model ? `${label} · ${model}` : `${label} configurado`;
+  elements.statusDot.classList.add("online");
+}
+
+function getHealthProvider(data) {
+  return data.configuredProviders?.[0] || data.provider || "";
 }
 
 function setChatPending(pending) {
@@ -2856,11 +2961,13 @@ function setAssistantMode() {
   fetch("/api/health")
     .then((response) => response.json())
     .then((data) => {
+      const provider = getHealthProvider(data);
+      const label = provider ? provider.toUpperCase() : "";
       elements.assistantMode.textContent = data.aiReady
-        ? `${data.provider.toUpperCase()} configurado`
+        ? `${label} configurado`
         : "Modo local";
       elements.settingsAiLabel.textContent = data.aiReady
-        ? `${data.provider.toUpperCase()} · ${data.model || "modelo ativo"}`
+        ? `${label} · ${data.model || "modelo ativo"}`
         : "Modo local";
       if (elements.settingsStorageLabel) {
         elements.settingsStorageLabel.textContent = data.database === "supabase" ? "Supabase" : "Local";

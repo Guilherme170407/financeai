@@ -46,6 +46,8 @@ const server = http.createServer(async (request, response) => {
         ok: true,
         aiReady: providers.length > 0,
         openaiReady: Boolean(process.env.OPENAI_API_KEY),
+        geminiReady: Boolean(process.env.GEMINI_API_KEY),
+        groqReady: Boolean(process.env.GROQ_API_KEY),
         configuredProviders: providers,
         provider: provider || "local",
         model: getActiveModel(provider),
@@ -66,6 +68,11 @@ const server = http.createServer(async (request, response) => {
 
     if (request.method === "POST" && url.pathname === "/api/email-code") {
       await handleEmailCode(request, response);
+      return;
+    }
+
+    if (request.method === "POST" && url.pathname === "/api/auth-code") {
+      await handleAuthCode(request, response);
       return;
     }
 
@@ -600,16 +607,16 @@ function getProvider() {
 function getConfiguredProviders() {
   const providers = [];
 
+  if (process.env.GROQ_API_KEY) {
+    providers.push("groq");
+  }
+
   if (process.env.OPENAI_API_KEY) {
     providers.push("openai");
   }
 
   if (process.env.GEMINI_API_KEY) {
     providers.push("gemini");
-  }
-
-  if (process.env.GROQ_API_KEY) {
-    providers.push("groq");
   }
 
   return providers;
@@ -633,7 +640,11 @@ function getActiveModel(provider) {
 
 async function readDatabase() {
   if (isSupabaseConfigured()) {
-    return readSupabaseDatabase();
+    try {
+      return await readSupabaseDatabase();
+    } catch (error) {
+      console.warn("Falha ao ler Supabase; usando banco local.", error.message);
+    }
   }
 
   return readLocalDatabase();
@@ -641,8 +652,12 @@ async function readDatabase() {
 
 async function saveDatabase(database) {
   if (isSupabaseConfigured()) {
-    await saveSupabaseDatabase(database);
-    return;
+    try {
+      await saveSupabaseDatabase(database);
+      return;
+    } catch (error) {
+      console.warn("Falha ao salvar no Supabase; salvando no banco local.", error.message);
+    }
   }
 
   saveLocalDatabase(database);
