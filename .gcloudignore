@@ -1,0 +1,5 @@
+.git
+.env
+database.json
+*.log
+node_modules
