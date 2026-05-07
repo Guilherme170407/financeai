@@ -729,6 +729,7 @@ function getSupabaseHeaders(config) {
     apikey: config.key,
     Authorization: `Bearer ${config.key}`,
     "Content-Type": "application/json",
+    "User-Agent": "FinanceAI-Server/1.0",
   };
 }
 
