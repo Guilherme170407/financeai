@@ -262,6 +262,13 @@
             </article>
           </div>
 
+          <div class="month-toolbar panel" aria-label="Filtro de mês">
+            <button id="month-previous" class="ghost-button" type="button">Mês anterior</button>
+            <strong id="month-label"></strong>
+            <button id="month-next" class="ghost-button" type="button">Próximo mês</button>
+            <button id="month-today" class="ghost-button" type="button">Mês atual</button>
+          </div>
+
           <div class="decision-grid" aria-label="Decisões financeiras rápidas">
             <article class="decision-card primary-decision">
               <span>Decisão de hoje</span>
@@ -284,7 +291,7 @@
             <section class="panel">
               <div class="panel-heading">
                 <h1>Fluxo de caixa</h1>
-                <span id="month-label"></span>
+                <span>Lançamentos do mês selecionado</span>
               </div>
 
               <form id="transaction-form" class="stacked-form">
@@ -357,6 +364,14 @@
                 <span id="top-category">Sem dados</span>
               </div>
               <div id="category-chart" class="empty-state">Cadastre despesas para ver a distribuição.</div>
+            </section>
+
+            <section class="panel">
+              <div class="panel-heading">
+                <h2>Alertas inteligentes</h2>
+                <span>Prioridades do mês</span>
+              </div>
+              <div id="smart-alerts" class="alert-list"></div>
             </section>
 
             <section class="panel">

@@ -988,6 +988,74 @@ select:focus {
   margin: 0;
 }
 
+.month-toolbar {
+  display: grid;
+  grid-template-columns: auto minmax(180px, 1fr) auto auto;
+  align-items: center;
+  gap: 10px;
+  margin: 18px 0;
+}
+
+.month-toolbar strong {
+  text-align: center;
+  text-transform: capitalize;
+}
+
+.item-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.edit-button {
+  min-height: 30px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--soft);
+  padding: 4px 9px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.edit-button:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.alert-list {
+  display: grid;
+  gap: 10px;
+}
+
+.smart-alert {
+  display: grid;
+  gap: 5px;
+  border: 1px solid var(--line);
+  border-left-width: 4px;
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  padding: 11px 12px;
+}
+
+.smart-alert span {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.smart-alert.positive {
+  border-left-color: var(--income);
+}
+
+.smart-alert.warning {
+  border-left-color: var(--warning);
+}
+
+.smart-alert.negative {
+  border-left-color: var(--expense);
+}
+
 .danger-panel {
   border-color: color-mix(in srgb, var(--expense) 34%, var(--line));
 }
@@ -1701,6 +1769,7 @@ select:focus {
 
   .summary-grid,
   .decision-grid,
+  .month-toolbar,
   .forecast-grid,
   .portfolio-summary,
   .goals-summary,
@@ -1718,6 +1787,10 @@ select:focus {
 
   .asset-item {
     grid-template-columns: 1fr 30px;
+  }
+
+  .month-toolbar strong {
+    text-align: left;
   }
 
   .amount-label,

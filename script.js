@@ -23,6 +23,7 @@ const DEFAULT_CATEGORIES = [
 
 const state = {
   type: "expense",
+  monthOffset: 0,
   transactions: readStorage(TRANSACTION_KEY, []),
   investments: readStorage(INVESTMENT_KEY, []),
   messages: readStorage(CHAT_KEY, []),
@@ -42,6 +43,9 @@ let pageTransitionTimer = 0;
 let registerCodeRequested = false;
 let toastTimer = 0;
 let dialogResolver = null;
+let editingTransactionId = "";
+let editingInvestmentId = "";
+let editingGoalId = "";
 
 state.categories = [...new Set([...DEFAULT_CATEGORIES, ...state.categories])];
 writeStorage(CATEGORY_KEY, state.categories);
@@ -67,6 +71,9 @@ const elements = {
   decisionGoal: document.querySelector("#decision-goal"),
   decisionGoalDetail: document.querySelector("#decision-goal-detail"),
   monthLabel: document.querySelector("#month-label"),
+  monthPrevious: document.querySelector("#month-previous"),
+  monthNext: document.querySelector("#month-next"),
+  monthToday: document.querySelector("#month-today"),
   dailyRate: document.querySelector("#daily-rate"),
   projectedBalance: document.querySelector("#projected-balance"),
   forecastLabel: document.querySelector("#forecast-label"),
@@ -165,6 +172,7 @@ const elements = {
   deleteAccount: document.querySelector("#delete-account"),
   monthlyStatus: document.querySelector("#monthly-status"),
   monthlyInsights: document.querySelector("#monthly-insights"),
+  smartAlerts: document.querySelector("#smart-alerts"),
   csvFile: document.querySelector("#csv-file"),
   importStatus: document.querySelector("#import-status"),
   categoryForm: document.querySelector("#category-form"),
@@ -370,25 +378,32 @@ function formatPercent(value) {
 }
 
 function getDaysLeft() {
+  if (state.monthOffset !== 0) {
+    return 1;
+  }
   const today = new Date();
   const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
   return Math.max(1, lastDay - today.getDate() + 1);
 }
 
 function getElapsedDays() {
+  if (state.monthOffset !== 0) {
+    return getMonthRange(state.monthOffset).end.getDate();
+  }
   const today = new Date();
   return Math.max(1, today.getDate());
 }
 
 function getMonthLabel() {
-  return new Date().toLocaleDateString("pt-BR", {
+  const range = getSelectedMonthRange();
+  return range.start.toLocaleDateString("pt-BR", {
     month: "long",
     year: "numeric",
   });
 }
 
 function getSummary() {
-  const currentMonth = getMonthRange(0);
+  const currentMonth = getSelectedMonthRange();
   const monthlyTransactions = state.transactions.filter((item) => isDateInRange(item.date, currentMonth));
   const income = monthlyTransactions
     .filter((item) => item.type === "income")
@@ -474,7 +489,7 @@ function getMonthlyNeeded(goal) {
 }
 
 function getCategoryGroups() {
-  const currentMonth = getMonthRange(0);
+  const currentMonth = getSelectedMonthRange();
   const expenses = state.transactions.filter((item) => item.type === "expense" && isDateInRange(item.date, currentMonth));
   const investmentOutflow = getInvestmentOutflowForRange(currentMonth);
   const total = expenses.reduce((sum, item) => sum + item.amount, 0) + investmentOutflow;
@@ -501,6 +516,10 @@ function getMonthRange(offset = 0) {
   const start = new Date(now.getFullYear(), now.getMonth() + offset, 1);
   const end = new Date(now.getFullYear(), now.getMonth() + offset + 1, 0, 23, 59, 59, 999);
   return { start, end };
+}
+
+function getSelectedMonthRange() {
+  return getMonthRange(state.monthOffset);
 }
 
 function isDateInRange(date, range) {
@@ -690,14 +709,25 @@ function addTransaction(event) {
     return;
   }
 
-  state.transactions.unshift({
+  const payload = {
     id: crypto.randomUUID(),
     type: state.type,
     description,
     category: elements.category.value,
     amount,
     date: new Date().toISOString(),
-  });
+  };
+
+  if (editingTransactionId) {
+    state.transactions = state.transactions.map((item) =>
+      item.id === editingTransactionId ? { ...item, ...payload, id: item.id, date: item.date } : item,
+    );
+    editingTransactionId = "";
+    elements.transactionForm.querySelector("button[type='submit']").lastChild.textContent = " Adicionar lançamento";
+    showToast("Lançamento atualizado.", "success");
+  } else {
+    state.transactions.unshift(payload);
+  }
 
   elements.transactionForm.reset();
   if (state.type === "expense") {
@@ -719,7 +749,7 @@ function addInvestment(event) {
     return;
   }
 
-  state.investments.unshift({
+  const payload = {
     id: crypto.randomUUID(),
     name,
     assetClass: elements.assetClass.value,
@@ -727,7 +757,18 @@ function addInvestment(event) {
     invested,
     current,
     date: new Date().toISOString(),
-  });
+  };
+
+  if (editingInvestmentId) {
+    state.investments = state.investments.map((item) =>
+      item.id === editingInvestmentId ? { ...item, ...payload, id: item.id, date: item.date } : item,
+    );
+    editingInvestmentId = "";
+    elements.investmentForm.querySelector("button[type='submit']").lastChild.textContent = " Adicionar investimento";
+    showToast("Investimento atualizado.", "success");
+  } else {
+    state.investments.unshift(payload);
+  }
 
   elements.investmentForm.reset();
   writeStorage(INVESTMENT_KEY, state.investments);
@@ -746,7 +787,7 @@ function addGoal(event) {
     return;
   }
 
-  state.goals.unshift({
+  const payload = {
     id: crypto.randomUUID(),
     name,
     kind: elements.goalKind.value,
@@ -754,7 +795,18 @@ function addGoal(event) {
     target,
     current: Math.min(current, target),
     createdAt: new Date().toISOString(),
-  });
+  };
+
+  if (editingGoalId) {
+    state.goals = state.goals.map((goal) =>
+      goal.id === editingGoalId ? { ...goal, ...payload, id: goal.id, createdAt: goal.createdAt } : goal,
+    );
+    editingGoalId = "";
+    elements.goalForm.querySelector("button[type='submit']").lastChild.textContent = " Adicionar meta";
+    showToast("Meta atualizada.", "success");
+  } else {
+    state.goals.unshift(payload);
+  }
 
   elements.goalForm.reset();
   writeStorage(GOAL_KEY, state.goals);
@@ -942,8 +994,8 @@ function buildSpreadsheetReport() {
   const portfolio = getPortfolioSummary();
   const goals = getGoalsSummary();
   const profile = getFinancialProfile(summary);
-  const currentMonth = getSummaryForRange(getMonthRange(0));
-  const previousMonth = getSummaryForRange(getMonthRange(-1));
+  const currentMonth = getSummaryForRange(getSelectedMonthRange());
+  const previousMonth = getSummaryForRange(getMonthRange(state.monthOffset - 1));
   const monthName = getMonthLabel();
   const username = state.user?.name || "Usuario";
   const filenameDate = now.toISOString().slice(0, 10);
@@ -1333,16 +1385,63 @@ function removeTransaction(id) {
   render();
 }
 
+function editTransaction(id) {
+  const item = state.transactions.find((transaction) => transaction.id === id);
+  if (!item) {
+    return;
+  }
+
+  editingTransactionId = id;
+  setTransactionType(item.type);
+  elements.description.value = item.description;
+  elements.category.value = item.category;
+  elements.amount.value = item.amount;
+  elements.transactionForm.querySelector("button[type='submit']").lastChild.textContent = " Salvar lançamento";
+  elements.description.focus();
+}
+
 function removeInvestment(id) {
   state.investments = state.investments.filter((item) => item.id !== id);
   writeStorage(INVESTMENT_KEY, state.investments);
   render();
 }
 
+function editInvestment(id) {
+  const item = state.investments.find((investment) => investment.id === id);
+  if (!item) {
+    return;
+  }
+
+  editingInvestmentId = id;
+  elements.assetName.value = item.name;
+  elements.assetClass.value = item.assetClass;
+  elements.assetRisk.value = item.risk;
+  elements.assetInvested.value = item.invested;
+  elements.assetCurrent.value = item.current;
+  elements.investmentForm.querySelector("button[type='submit']").lastChild.textContent = " Salvar investimento";
+  elements.assetName.focus();
+}
+
 function removeGoal(id) {
   state.goals = state.goals.filter((item) => item.id !== id);
   writeStorage(GOAL_KEY, state.goals);
   render();
+}
+
+function editGoal(id) {
+  const goal = state.goals.find((item) => item.id === id);
+  if (!goal) {
+    return;
+  }
+
+  editingGoalId = id;
+  elements.goalName.value = goal.name;
+  elements.goalKind.value = goal.kind;
+  elements.goalDate.value = goal.date;
+  elements.goalTarget.value = goal.target;
+  elements.goalCurrent.value = goal.current;
+  elements.goalForm.querySelector("button[type='submit']").lastChild.textContent = " Salvar meta";
+  elements.goalName.focus();
 }
 
 async function clearAllData() {
@@ -1380,6 +1479,7 @@ function renderSummary() {
   const ratio = summary.income > 0 ? formatPercent(summary.expenseRatio * 100) : "0,00%";
 
   elements.monthLabel.textContent = getMonthLabel();
+  elements.monthNext.disabled = state.monthOffset >= 0;
   elements.balance.textContent = formatCurrency(summary.balance);
   elements.balance.classList.toggle("negative", summary.balance < 0);
   elements.balance.classList.toggle("positive", summary.balance >= 0);
@@ -1485,14 +1585,15 @@ function getFinancialProfile(summary) {
 }
 
 function renderTransactions() {
-  if (state.transactions.length === 0) {
+  const visibleTransactions = state.transactions.filter((item) => isDateInRange(item.date, getSelectedMonthRange()));
+  if (visibleTransactions.length === 0) {
     elements.transactionList.className = "empty-state";
-    elements.transactionList.textContent = "Nenhuma transação cadastrada.";
+    elements.transactionList.textContent = "Nenhuma transação no mês selecionado.";
     return;
   }
 
   elements.transactionList.className = "transaction-list";
-  elements.transactionList.innerHTML = state.transactions
+  elements.transactionList.innerHTML = visibleTransactions
     .slice(0, 10)
     .map((item) => {
       const isIncome = item.type === "income";
@@ -1512,7 +1613,10 @@ function renderTransactions() {
             <span>${escapeHtml(item.category)} · ${date}</span>
           </div>
           <span class="amount-label ${amountClass}">${sign}${formatCurrency(item.amount)}</span>
-          <button class="delete-button" type="button" data-delete-transaction="${item.id}" aria-label="Excluir transação">×</button>
+          <div class="item-actions">
+            <button class="edit-button" type="button" data-edit-transaction="${item.id}">Editar</button>
+            <button class="delete-button" type="button" data-delete-transaction="${item.id}" aria-label="Excluir transação">×</button>
+          </div>
         </article>
       `;
     })
@@ -1520,6 +1624,9 @@ function renderTransactions() {
 
   elements.transactionList.querySelectorAll("[data-delete-transaction]").forEach((button) => {
     button.addEventListener("click", () => removeTransaction(button.dataset.deleteTransaction));
+  });
+  elements.transactionList.querySelectorAll("[data-edit-transaction]").forEach((button) => {
+    button.addEventListener("click", () => editTransaction(button.dataset.editTransaction));
   });
 }
 
@@ -1617,8 +1724,8 @@ function renderBudgets() {
 }
 
 function renderMonthlyInsights() {
-  const current = getSummaryForRange(getMonthRange(0));
-  const previous = getSummaryForRange(getMonthRange(-1));
+  const current = getSummaryForRange(getSelectedMonthRange());
+  const previous = getSummaryForRange(getMonthRange(state.monthOffset - 1));
   const expenseDelta = current.expenses - previous.expenses;
   const incomeDelta = current.income - previous.income;
   const categories = getCategoryGroups();
@@ -1660,6 +1767,64 @@ function renderMonthlyInsights() {
     .join("");
 }
 
+function getSmartAlerts() {
+  const summary = getSummary();
+  const alerts = [];
+  const budgetAlerts = getBudgetRows().filter((row) => row.limit > 0 && row.percent >= 80);
+  const topCategory = getCategoryGroups()[0];
+
+  if (summary.income <= 0) {
+    alerts.push({ tone: "warning", title: "Renda não cadastrada", text: "Cadastre uma receita para o app calcular limite diário e previsão." });
+  }
+
+  if (summary.projectedBalance < 0) {
+    alerts.push({ tone: "negative", title: "Previsão negativa", text: `A projeção fecha em ${formatCurrency(summary.projectedBalance)}. Revise gastos antes de novos compromissos.` });
+  }
+
+  budgetAlerts.slice(0, 2).forEach((row) => {
+    alerts.push({
+      tone: row.percent >= 100 ? "negative" : "warning",
+      title: `${row.category} no limite`,
+      text: `${formatPercent(row.percent)} do orçamento usado (${formatCurrency(row.spent)} de ${formatCurrency(row.limit)}).`,
+    });
+  });
+
+  if (summary.investmentOutflow > Math.max(0, summary.balance) && summary.investmentOutflow > 0) {
+    alerts.push({
+      tone: "warning",
+      title: "Aporte pressionando caixa",
+      text: `${formatCurrency(summary.investmentOutflow)} aplicado neste mês. Confirme se o saldo diário ainda cobre os gastos.`,
+    });
+  }
+
+  if (topCategory && topCategory.percent >= 45) {
+    alerts.push({
+      tone: "warning",
+      title: `Concentração em ${topCategory.name}`,
+      text: `${formatPercent(topCategory.percent)} das despesas estão nessa categoria.`,
+    });
+  }
+
+  if (alerts.length === 0) {
+    alerts.push({ tone: "positive", title: "Sem alertas críticos", text: "O mês selecionado não tem orçamento estourado nem previsão negativa." });
+  }
+
+  return alerts.slice(0, 4);
+}
+
+function renderSmartAlerts() {
+  elements.smartAlerts.innerHTML = getSmartAlerts()
+    .map(
+      (alert) => `
+        <article class="smart-alert ${alert.tone}">
+          <strong>${escapeHtml(alert.title)}</strong>
+          <span>${escapeHtml(alert.text)}</span>
+        </article>
+      `,
+    )
+    .join("");
+}
+
 function renderInvestments() {
   const portfolio = getPortfolioSummary();
 
@@ -1694,7 +1859,10 @@ function renderInvestments() {
             <strong>Hoje: ${formatCurrency(item.current)}</strong>
             <span class="${tone}">${formatCurrency(result)} · ${formatPercent(rate)}</span>
           </div>
-          <button class="delete-button" type="button" data-delete-investment="${item.id}" aria-label="Excluir investimento">×</button>
+          <div class="item-actions">
+            <button class="edit-button" type="button" data-edit-investment="${item.id}">Editar</button>
+            <button class="delete-button" type="button" data-delete-investment="${item.id}" aria-label="Excluir investimento">×</button>
+          </div>
         </article>
       `;
     })
@@ -1702,6 +1870,9 @@ function renderInvestments() {
 
   elements.investmentList.querySelectorAll("[data-delete-investment]").forEach((button) => {
     button.addEventListener("click", () => removeInvestment(button.dataset.deleteInvestment));
+  });
+  elements.investmentList.querySelectorAll("[data-edit-investment]").forEach((button) => {
+    button.addEventListener("click", () => editInvestment(button.dataset.editInvestment));
   });
 }
 
@@ -1772,7 +1943,10 @@ function renderGoals() {
               <span class="goal-meta">${escapeHtml(goal.kind)} · ${deadline}</span>
             </div>
             <span class="risk-pill">${formatPercent(progress)}</span>
-            <button class="delete-button" type="button" data-delete-goal="${goal.id}" aria-label="Excluir meta">×</button>
+            <div class="item-actions">
+              <button class="edit-button" type="button" data-edit-goal="${goal.id}">Editar</button>
+              <button class="delete-button" type="button" data-delete-goal="${goal.id}" aria-label="Excluir meta">×</button>
+            </div>
           </header>
           <div class="bar"><span style="width: ${Math.max(4, progress)}%"></span></div>
           <div class="goal-footer">
@@ -1786,6 +1960,9 @@ function renderGoals() {
 
   elements.goalList.querySelectorAll("[data-delete-goal]").forEach((button) => {
     button.addEventListener("click", () => removeGoal(button.dataset.deleteGoal));
+  });
+  elements.goalList.querySelectorAll("[data-edit-goal]").forEach((button) => {
+    button.addEventListener("click", () => editGoal(button.dataset.editGoal));
   });
 }
 
@@ -1871,8 +2048,8 @@ function buildSnapshot() {
   const allocation = getAllocationGroups();
   const goals = getGoalsSummary();
   const transactionDetails = getTransactionDetails();
-  const currentMonth = getSummaryForRange(getMonthRange(0));
-  const previousMonth = getSummaryForRange(getMonthRange(-1));
+  const currentMonth = getSummaryForRange(getSelectedMonthRange());
+  const previousMonth = getSummaryForRange(getMonthRange(state.monthOffset - 1));
 
   return {
     usuario: state.user
@@ -2792,6 +2969,7 @@ function render() {
   renderCategories();
   renderBudgets();
   renderMonthlyInsights();
+  renderSmartAlerts();
   renderInvestments();
   renderAllocation();
   renderGoals();
@@ -2878,6 +3056,21 @@ elements.passwordForm.addEventListener("submit", changePassword);
 elements.deleteAccount.addEventListener("click", deleteAccount);
 elements.chatForm.addEventListener("submit", sendChatMessage);
 elements.clearData.addEventListener("click", clearAllData);
+elements.monthPrevious.addEventListener("click", () => {
+  state.monthOffset -= 1;
+  render();
+  renderChatHistory();
+});
+elements.monthNext.addEventListener("click", () => {
+  state.monthOffset = Math.min(0, state.monthOffset + 1);
+  render();
+  renderChatHistory();
+});
+elements.monthToday.addEventListener("click", () => {
+  state.monthOffset = 0;
+  render();
+  renderChatHistory();
+});
 
 async function initApp() {
   applyTheme(getTheme());
