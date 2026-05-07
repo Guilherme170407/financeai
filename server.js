@@ -50,11 +50,13 @@ const server = http.createServer(async (request, response) => {
         provider: provider || "local",
         model: getActiveModel(provider),
         emailReady: isEmailConfigured(),
+        database: isSupabaseConfigured() ? "supabase" : "local",
       });
     }
 
     if (request.method === "GET" && url.pathname === "/api/session") {
-      return handleSession(request, response);
+      await handleSession(request, response);
+      return;
     }
 
     if (request.method === "POST" && url.pathname === "/api/auth") {
@@ -113,8 +115,8 @@ server.listen(port, () => {
   console.log(isEmailConfigured() ? "Envio de email ativo via SMTP." : "SMTP nao configurado; codigos aparecem em modo local no cadastro.");
 });
 
-function handleSession(request, response) {
-  const database = readDatabase();
+async function handleSession(request, response) {
+  const database = await readDatabase();
   const user = getCurrentUser(request, database);
 
   if (!user) {
@@ -145,7 +147,7 @@ async function handleAuth(request, response) {
     return sendJson(response, 400, { error: "Use uma senha com pelo menos 4 caracteres." });
   }
 
-  const database = readDatabase();
+  const database = await readDatabase();
   let user = mode === "login" ? findUserByLogin(database.users, login) : database.users.find((item) => item.email === email);
   let created = false;
 
@@ -209,7 +211,7 @@ async function handleAuth(request, response) {
     updatedAt: new Date().toISOString(),
   };
   database.users.push(user);
-  saveDatabase(database);
+  await saveDatabase(database);
 
   return sendJson(response, 201, {
     authenticated: false,
@@ -228,7 +230,7 @@ async function handleEmailCode(request, response) {
     return sendJson(response, 400, { error: "Informe o e-mail da conta." });
   }
 
-  const database = readDatabase();
+  const database = await readDatabase();
   let user = database.users.find((item) => item.email === email);
   if (purpose === "register" && user) {
     return sendJson(response, 409, { error: "Já existe uma conta com este e-mail." });
@@ -275,7 +277,7 @@ async function handleAuthCode(request, response) {
     return sendJson(response, 400, { error: "Informe e-mail e código." });
   }
 
-  const database = readDatabase();
+  const database = await readDatabase();
   const user = database.users.find((item) => item.email === email);
   if (!user) {
     return sendJson(response, 404, { error: "Conta não encontrada para este e-mail." });
@@ -303,7 +305,7 @@ async function handleAuthCode(request, response) {
 
 async function handleSaveData(request, response) {
   const body = await readJson(request);
-  const database = readDatabase();
+  const database = await readDatabase();
   const user = getCurrentUser(request, database);
 
   if (!user) {
@@ -315,7 +317,7 @@ async function handleSaveData(request, response) {
     user.profile = normalizeProfile({ ...user.profile, ...body.profile }, user.profile);
   }
   user.updatedAt = new Date().toISOString();
-  saveDatabase(database);
+  await saveDatabase(database);
 
   return sendJson(response, 200, {
     ok: true,
@@ -325,7 +327,7 @@ async function handleSaveData(request, response) {
 
 async function handleChangePassword(request, response) {
   const body = await readJson(request);
-  const database = readDatabase();
+  const database = await readDatabase();
   const user = getCurrentUser(request, database);
   const currentPassword = String(body.currentPassword || "");
   const newPassword = String(body.newPassword || "");
@@ -344,7 +346,7 @@ async function handleChangePassword(request, response) {
 
   user.password = hashPassword(newPassword);
   user.updatedAt = new Date().toISOString();
-  saveDatabase(database);
+  await saveDatabase(database);
 
   return sendJson(response, 200, { ok: true });
 }
@@ -363,7 +365,7 @@ async function handleResetPassword(request, response) {
     return sendJson(response, 400, { error: "Use uma senha com pelo menos 4 caracteres." });
   }
 
-  const database = readDatabase();
+  const database = await readDatabase();
   const user = database.users.find((item) => item.email === email);
 
   if (!user) {
@@ -377,14 +379,14 @@ async function handleResetPassword(request, response) {
 
   user.password = hashPassword(password);
   user.updatedAt = new Date().toISOString();
-  saveDatabase(database);
+  await saveDatabase(database);
 
   return sendJson(response, 200, { ok: true });
 }
 
 async function handleDeleteAccount(request, response) {
   const body = await readJson(request);
-  const database = readDatabase();
+  const database = await readDatabase();
   const user = getCurrentUser(request, database);
   const password = String(body.password || "");
 
@@ -397,7 +399,7 @@ async function handleDeleteAccount(request, response) {
   }
 
   database.users = database.users.filter((item) => item.id !== user.id);
-  saveDatabase(database);
+  await saveDatabase(database);
 
   const cookies = parseCookies(request.headers.cookie || "");
   if (cookies.financeai_session) {
@@ -629,7 +631,24 @@ function getActiveModel(provider) {
   return "local";
 }
 
-function readDatabase() {
+async function readDatabase() {
+  if (isSupabaseConfigured()) {
+    return readSupabaseDatabase();
+  }
+
+  return readLocalDatabase();
+}
+
+async function saveDatabase(database) {
+  if (isSupabaseConfigured()) {
+    await saveSupabaseDatabase(database);
+    return;
+  }
+
+  saveLocalDatabase(database);
+}
+
+function readLocalDatabase() {
   if (!fs.existsSync(databasePath)) {
     return { users: [] };
   }
@@ -645,8 +664,72 @@ function readDatabase() {
   }
 }
 
-function saveDatabase(database) {
+function saveLocalDatabase(database) {
   fs.writeFileSync(databasePath, `${JSON.stringify(database, null, 2)}\n`, "utf8");
+}
+
+function isSupabaseConfigured() {
+  return Boolean(process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY);
+}
+
+function getSupabaseConfig() {
+  const url = String(process.env.SUPABASE_URL || "").replace(/\/+$/, "");
+  return {
+    url,
+    key: process.env.SUPABASE_SERVICE_ROLE_KEY,
+    table: process.env.SUPABASE_TABLE || "financeai_state",
+    rowId: process.env.SUPABASE_ROW_ID || "database",
+  };
+}
+
+async function readSupabaseDatabase() {
+  const config = getSupabaseConfig();
+  const response = await fetch(
+    `${config.url}/rest/v1/${encodeURIComponent(config.table)}?id=eq.${encodeURIComponent(config.rowId)}&select=data`,
+    {
+      headers: getSupabaseHeaders(config),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(`Falha ao ler Supabase: ${await response.text()}`);
+  }
+
+  const rows = await response.json();
+  const database = rows[0]?.data;
+  return {
+    users: Array.isArray(database?.users) ? database.users : [],
+  };
+}
+
+async function saveSupabaseDatabase(database) {
+  const config = getSupabaseConfig();
+  const response = await fetch(`${config.url}/rest/v1/${encodeURIComponent(config.table)}`, {
+    method: "POST",
+    headers: {
+      ...getSupabaseHeaders(config),
+      Prefer: "resolution=merge-duplicates",
+    },
+    body: JSON.stringify({
+      id: config.rowId,
+      data: {
+        users: Array.isArray(database.users) ? database.users : [],
+      },
+      updated_at: new Date().toISOString(),
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Falha ao salvar Supabase: ${await response.text()}`);
+  }
+}
+
+function getSupabaseHeaders(config) {
+  return {
+    apikey: config.key,
+    Authorization: `Bearer ${config.key}`,
+    "Content-Type": "application/json",
+  };
 }
 
 function normalizeEmail(email) {
