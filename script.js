@@ -1480,6 +1480,8 @@ function renderSummary() {
 
   elements.monthLabel.textContent = getMonthLabel();
   elements.monthNext.disabled = state.monthOffset >= 0;
+  elements.monthNext.hidden = state.monthOffset >= 0;
+  elements.monthToday.hidden = state.monthOffset === 0;
   elements.balance.textContent = formatCurrency(summary.balance);
   elements.balance.classList.toggle("negative", summary.balance < 0);
   elements.balance.classList.toggle("positive", summary.balance >= 0);
