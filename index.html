@@ -527,7 +527,7 @@
           <div class="section-heading">
             <div>
               <h2>Carteira de investimentos</h2>
-              <p>Controle aportes, valor atual, retorno e alocação por classe de ativo.</p>
+              <p>Cadastre o dinheiro aplicado e acompanhe quanto ele vale hoje.</p>
             </div>
             <span class="disclaimer">Conteúdo educativo, não recomendação individual.</span>
           </div>
@@ -565,12 +565,12 @@
 
                 <div class="form-row">
                   <label class="field">
-                    <span>Investido</span>
-                    <input id="asset-invested" type="number" min="0" step="0.01" placeholder="0,00" />
+                    <span>Quanto você aplicou</span>
+                    <input id="asset-invested" type="number" min="0" step="0.01" placeholder="Dinheiro que saiu do saldo" />
                   </label>
                   <label class="field">
-                    <span>Valor atual</span>
-                    <input id="asset-current" type="number" min="0" step="0.01" placeholder="0,00" />
+                    <span>Quanto vale hoje</span>
+                    <input id="asset-current" type="number" min="0" step="0.01" placeholder="Valor atual do ativo" />
                   </label>
                 </div>
 
@@ -587,15 +587,15 @@
             <section class="panel portfolio-panel">
               <div class="portfolio-summary">
                 <article>
-                  <span>Patrimônio investido</span>
+                  <span>Valor atual da carteira</span>
                   <strong id="portfolio-current">R$ 0,00</strong>
                 </article>
                 <article>
-                  <span>Resultado</span>
+                  <span>Ganho/perda</span>
                   <strong id="portfolio-return">R$ 0,00</strong>
                 </article>
                 <article>
-                  <span>Rentabilidade</span>
+                  <span>Retorno sobre aplicado</span>
                   <strong id="portfolio-return-rate">0,00%</strong>
                 </article>
               </div>

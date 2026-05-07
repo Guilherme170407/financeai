@@ -385,9 +385,11 @@ function getSummary() {
   const income = monthlyTransactions
     .filter((item) => item.type === "income")
     .reduce((sum, item) => sum + item.amount, 0);
-  const expenses = monthlyTransactions
+  const transactionExpenses = monthlyTransactions
     .filter((item) => item.type === "expense")
     .reduce((sum, item) => sum + item.amount, 0);
+  const investmentOutflow = getInvestmentOutflowForRange(currentMonth);
+  const expenses = transactionExpenses + investmentOutflow;
   const daysLeft = getDaysLeft();
   const dailyRate = expenses / getElapsedDays();
   const balance = income - expenses;
@@ -396,6 +398,8 @@ function getSummary() {
   return {
     income,
     expenses,
+    transactionExpenses,
+    investmentOutflow,
     balance,
     daysLeft,
     dailyRate,
@@ -404,6 +408,12 @@ function getSummary() {
     expenseRatio: income > 0 ? expenses / income : 0,
     emergencyTarget: Math.max(expenses * 6, 0),
   };
+}
+
+function getInvestmentOutflowForRange(range) {
+  return state.investments
+    .filter((item) => isDateInRange(item.date, range))
+    .reduce((sum, item) => sum + item.invested, 0);
 }
 
 function getPortfolioSummary() {
@@ -458,11 +468,16 @@ function getMonthlyNeeded(goal) {
 function getCategoryGroups() {
   const currentMonth = getMonthRange(0);
   const expenses = state.transactions.filter((item) => item.type === "expense" && isDateInRange(item.date, currentMonth));
-  const total = expenses.reduce((sum, item) => sum + item.amount, 0);
+  const investmentOutflow = getInvestmentOutflowForRange(currentMonth);
+  const total = expenses.reduce((sum, item) => sum + item.amount, 0) + investmentOutflow;
   const groups = expenses.reduce((acc, item) => {
     acc[item.category] = (acc[item.category] || 0) + item.amount;
     return acc;
   }, {});
+
+  if (investmentOutflow > 0) {
+    groups.Investimentos = (groups.Investimentos || 0) + investmentOutflow;
+  }
 
   return Object.entries(groups)
     .map(([name, amount]) => ({
@@ -488,7 +503,9 @@ function isDateInRange(date, range) {
 function getSummaryForRange(range) {
   const items = state.transactions.filter((item) => isDateInRange(item.date, range));
   const income = items.filter((item) => item.type === "income").reduce((sum, item) => sum + item.amount, 0);
-  const expenses = items.filter((item) => item.type === "expense").reduce((sum, item) => sum + item.amount, 0);
+  const expenses =
+    items.filter((item) => item.type === "expense").reduce((sum, item) => sum + item.amount, 0) +
+    getInvestmentOutflowForRange(range);
   return {
     income,
     expenses,
@@ -935,7 +952,7 @@ function buildSpreadsheetReport() {
         ["Saldo", currentMonth.balance, previousMonth.balance],
         [],
         ["Carteira", "Valor"],
-        ["Total investido", portfolio.invested],
+        ["Total aplicado", portfolio.invested],
         ["Valor atual", portfolio.current],
         ["Resultado", portfolio.result],
         ["Rentabilidade %", portfolio.rate],
@@ -1000,7 +1017,7 @@ function buildSpreadsheetReport() {
     {
       name: "Investimentos",
       rows: [
-        ["Ativo", "Classe", "Risco", "Investido", "Valor atual", "Resultado", "Rentabilidade %"],
+        ["Ativo", "Classe", "Risco", "Aplicado", "Valor atual", "Resultado", "Rentabilidade %"],
         ...state.investments.map((item) => {
           const result = item.current - item.invested;
           return [
@@ -1345,7 +1362,10 @@ function renderSummary() {
     summary.balance >= 0 ? "Você está no positivo" : "Saldo negativo no mês";
   elements.income.textContent = formatCurrency(summary.income);
   elements.expenses.textContent = formatCurrency(summary.expenses);
-  elements.expenseRatio.textContent = `${ratio} das receitas`;
+  elements.expenseRatio.textContent =
+    summary.investmentOutflow > 0
+      ? `${ratio} das receitas, incluindo ${formatCurrency(summary.investmentOutflow)} aplicado`
+      : `${ratio} das receitas`;
   elements.dailyBudget.textContent = formatCurrency(summary.dailyBudget);
   elements.daysLeft.textContent = `${summary.daysLeft} dias restantes`;
   elements.dailyRate.textContent = formatCurrency(summary.dailyRate);
@@ -1376,7 +1396,10 @@ function renderDashboardDecisions(summary) {
     elements.decisionTodayDetail.textContent = `Faltam ${formatCurrency(Math.abs(summary.balance))} para fechar o mês no positivo.`;
   } else {
     elements.decisionToday.textContent = `Gaste até ${formatCurrency(summary.dailyBudget)} hoje`;
-    elements.decisionTodayDetail.textContent = "Esse é o limite diário para manter a previsão positiva até o fim do mês.";
+    elements.decisionTodayDetail.textContent =
+      summary.investmentOutflow > 0
+        ? "Esse limite ja considera os aportes feitos na carteira neste mes."
+        : "Esse é o limite diário para manter a previsão positiva até o fim do mês.";
   }
 
   if (!topCategory) {
@@ -1640,10 +1663,10 @@ function renderInvestments() {
         <article class="asset-item">
           <div class="item-copy">
             <strong>${escapeHtml(item.name)}</strong>
-            <span class="asset-meta">${escapeHtml(item.assetClass)} · risco ${escapeHtml(item.risk)} · investido ${formatCurrency(item.invested)}</span>
+            <span class="asset-meta">${escapeHtml(item.assetClass)} · risco ${escapeHtml(item.risk)} · aplicado ${formatCurrency(item.invested)}</span>
           </div>
           <div class="asset-return">
-            <strong>${formatCurrency(item.current)}</strong>
+            <strong>Hoje: ${formatCurrency(item.current)}</strong>
             <span class="${tone}">${formatCurrency(result)} · ${formatPercent(rate)}</span>
           </div>
           <button class="delete-button" type="button" data-delete-investment="${item.id}" aria-label="Excluir investimento">×</button>
@@ -1840,6 +1863,8 @@ function buildSnapshot() {
       saldo: formatCurrency(summary.balance),
       receitas: formatCurrency(summary.income),
       despesas: formatCurrency(summary.expenses),
+      despesasSemInvestimentos: formatCurrency(summary.transactionExpenses),
+      aportesEmInvestimentosNoMes: formatCurrency(summary.investmentOutflow),
       orcamentoDiario: formatCurrency(summary.dailyBudget),
       gastoMedioDia: formatCurrency(summary.dailyRate),
       previsaoFimMes: formatCurrency(summary.projectedBalance),
@@ -1855,7 +1880,7 @@ function buildSnapshot() {
       saldoMesAnterior: formatCurrency(previousMonth.balance),
     },
     carteira: {
-      investido: formatCurrency(portfolio.invested),
+      totalAplicado: formatCurrency(portfolio.invested),
       valorAtual: formatCurrency(portfolio.current),
       resultado: formatCurrency(portfolio.result),
       rentabilidade: formatPercent(portfolio.rate),
@@ -1864,7 +1889,7 @@ function buildSnapshot() {
         nome: item.name,
         classe: item.assetClass,
         risco: item.risk,
-        investido: formatCurrency(item.invested),
+        aplicado: formatCurrency(item.invested),
         valorAtual: formatCurrency(item.current),
         resultado: formatCurrency(item.current - item.invested),
       })),
@@ -2569,7 +2594,7 @@ function answerLocally(question) {
     if (portfolio.current <= 0) {
       return "Sua carteira ainda não tem ativos cadastrados. Antes de buscar rentabilidade, monte uma reserva e registre seus investimentos atuais.";
     }
-    return `Carteira: ${formatCurrency(portfolio.current)}. Resultado: ${formatCurrency(portfolio.result)} (${formatPercent(portfolio.rate)}).`;
+    return `Carteira: valor atual ${formatCurrency(portfolio.current)}. Total aplicado ${formatCurrency(portfolio.invested)}. Resultado ${formatCurrency(portfolio.result)} (${formatPercent(portfolio.rate)}). Os aportes do mês reduzem seu saldo disponível.`;
   }
 
   if (text.includes("meta") || text.includes("objetivo")) {
