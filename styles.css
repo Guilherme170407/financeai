@@ -1005,6 +1005,8 @@ select:focus {
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  justify-self: end;
+  white-space: nowrap;
 }
 
 .edit-button {
@@ -1155,7 +1157,7 @@ select:focus {
 }
 
 .transaction-item {
-  grid-template-columns: 34px 1fr auto 30px;
+  grid-template-columns: 34px minmax(0, 1fr) minmax(96px, auto) auto;
   align-items: center;
 }
 
@@ -1315,7 +1317,7 @@ select:focus {
 
 .goal-item header {
   display: grid;
-  grid-template-columns: 1fr auto 30px;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   gap: 10px;
   align-items: center;
 }
@@ -1344,7 +1346,7 @@ select:focus {
 }
 
 .asset-item {
-  grid-template-columns: 1fr auto 30px;
+  grid-template-columns: minmax(0, 1fr) minmax(132px, auto) auto;
   align-items: center;
 }
 
@@ -1782,11 +1784,11 @@ select:focus {
 
   .transaction-item,
   .asset-item {
-    grid-template-columns: 34px 1fr;
+    grid-template-columns: 34px minmax(0, 1fr);
   }
 
   .asset-item {
-    grid-template-columns: 1fr 30px;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .month-toolbar strong {
@@ -1799,9 +1801,21 @@ select:focus {
     text-align: left;
   }
 
-  .transaction-item .delete-button {
+  .transaction-item .item-actions {
     grid-column: 1 / -1;
     justify-self: end;
+  }
+
+  .asset-item .item-actions {
+    justify-self: end;
+  }
+
+  .goal-item header {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .goal-item header .item-actions {
+    grid-column: 1 / -1;
   }
 
   .section-heading {
