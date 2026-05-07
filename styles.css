@@ -943,6 +943,51 @@ select:focus {
   gap: 12px;
 }
 
+.settings-stat-list,
+.settings-profile-list {
+  display: grid;
+  gap: 8px;
+}
+
+.settings-stat-list article,
+.settings-profile-list div {
+  display: flex;
+  min-height: 42px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  padding: 10px 12px;
+}
+
+.settings-stat-list span,
+.settings-profile-list span,
+.settings-note {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.settings-stat-list strong,
+.settings-profile-list strong {
+  max-width: 58%;
+  color: var(--strong);
+  font-size: 13px;
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.settings-actions {
+  display: grid;
+  gap: 10px;
+}
+
+.settings-note {
+  margin: 0;
+}
+
 .danger-panel {
   border-color: color-mix(in srgb, var(--expense) 34%, var(--line));
 }

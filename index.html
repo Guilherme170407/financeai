@@ -705,19 +705,68 @@
             <section class="panel settings-panel">
               <div class="panel-heading">
                 <div>
-                  <h2>Aparência</h2>
-                  <span id="settings-theme-label">Tema atual</span>
+                  <h2>Status do app</h2>
+                  <span id="settings-sync-label">Sincronizacao local</span>
                 </div>
               </div>
-              <button id="settings-theme-toggle" class="primary-button" type="button">Alternar tema</button>
-              <button id="settings-privacy-toggle" class="ghost-button full-button" type="button">Ocultar valores</button>
+              <div class="settings-stat-list">
+                <article>
+                  <span>Banco</span>
+                  <strong id="settings-storage-label">Local</strong>
+                </article>
+                <article>
+                  <span>Assistente</span>
+                  <strong id="settings-ai-label">Modo local</strong>
+                </article>
+                <article>
+                  <span>Dados salvos</span>
+                  <strong id="settings-data-count">0 itens</strong>
+                </article>
+              </div>
             </section>
 
             <section class="panel settings-panel">
               <div class="panel-heading">
                 <div>
-                  <h2>Conta</h2>
+                  <h2>Perfil da conta</h2>
                   <span id="settings-account-label">Usuário conectado</span>
+                </div>
+              </div>
+              <div class="settings-profile-list">
+                <div>
+                  <span>Objetivo</span>
+                  <strong id="settings-focus-label">Nao informado</strong>
+                </div>
+                <div>
+                  <span>Renda estimada</span>
+                  <strong id="settings-income-label">R$ 0,00</strong>
+                </div>
+                <div>
+                  <span>Perfil investidor</span>
+                  <strong id="settings-investor-label">Conservador</strong>
+                </div>
+              </div>
+            </section>
+
+            <section class="panel settings-panel">
+              <div class="panel-heading">
+                <div>
+                  <h2>Preferências</h2>
+                  <span id="settings-theme-label">Tema atual</span>
+                </div>
+              </div>
+              <div class="settings-actions">
+                <button id="settings-theme-toggle" class="primary-button" type="button">Alternar tema</button>
+                <button id="settings-privacy-toggle" class="ghost-button full-button" type="button">Ocultar valores</button>
+              </div>
+              <p class="settings-note">Use privacidade durante apresentação para esconder valores nos cards e listas.</p>
+            </section>
+
+            <section class="panel settings-panel">
+              <div class="panel-heading">
+                <div>
+                  <h2>Segurança</h2>
+                  <span>Troca de senha da conta atual</span>
                 </div>
               </div>
               <form id="password-form" class="stacked-form">
@@ -736,12 +785,15 @@
             <section class="panel settings-panel">
               <div class="panel-heading">
                 <div>
-                  <h2>Dados</h2>
-                  <span>Ferramentas para apresentação</span>
+                  <h2>Relatórios e dados</h2>
+                  <span id="settings-report-label">Planilha completa da conta</span>
                 </div>
               </div>
-              <button id="settings-print-report" class="ghost-button full-button" type="button">Gerar planilha</button>
-              <button id="settings-clear-data" class="ghost-button full-button" type="button">Limpar dados financeiros</button>
+              <div class="settings-actions">
+                <button id="settings-print-report" class="ghost-button full-button" type="button">Baixar planilha</button>
+                <button id="settings-clear-data" class="ghost-button full-button" type="button">Limpar dados financeiros</button>
+              </div>
+              <p class="settings-note">A planilha inclui resumo, transações, orçamentos, metas e investimentos.</p>
             </section>
 
             <section class="panel settings-panel danger-panel">

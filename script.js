@@ -149,6 +149,14 @@ const elements = {
   settingsThemeLabel: document.querySelector("#settings-theme-label"),
   settingsPrivacyToggle: document.querySelector("#settings-privacy-toggle"),
   settingsAccountLabel: document.querySelector("#settings-account-label"),
+  settingsSyncLabel: document.querySelector("#settings-sync-label"),
+  settingsStorageLabel: document.querySelector("#settings-storage-label"),
+  settingsAiLabel: document.querySelector("#settings-ai-label"),
+  settingsDataCount: document.querySelector("#settings-data-count"),
+  settingsFocusLabel: document.querySelector("#settings-focus-label"),
+  settingsIncomeLabel: document.querySelector("#settings-income-label"),
+  settingsInvestorLabel: document.querySelector("#settings-investor-label"),
+  settingsReportLabel: document.querySelector("#settings-report-label"),
   passwordForm: document.querySelector("#password-form"),
   currentPassword: document.querySelector("#current-password"),
   newPassword: document.querySelector("#new-password"),
@@ -803,10 +811,27 @@ function renderPrivacy() {
 
 function renderSettings() {
   const theme = getTheme() === "dark" ? "Escuro" : "Claro";
+  const dataCount =
+    state.transactions.length +
+    state.investments.length +
+    state.goals.length +
+    Object.keys(state.budgets).length +
+    state.messages.length;
+
   elements.settingsThemeLabel.textContent = `Tema atual: ${theme}`;
   elements.settingsAccountLabel.textContent = state.user
     ? `${state.user.email} · ${state.user.investorProfile || "Perfil não definido"}`
     : "Nenhum usuário conectado";
+  elements.settingsSyncLabel.textContent = state.serverBacked ? "Sincronizado com a conta" : "Dados apenas neste navegador";
+  elements.settingsStorageLabel.textContent = state.serverBacked ? "Banco online" : "Local";
+  elements.settingsDataCount.textContent = `${dataCount} item${dataCount === 1 ? "" : "s"}`;
+  elements.settingsFocusLabel.textContent = state.user?.focus || "Nao informado";
+  elements.settingsIncomeLabel.textContent = formatCurrency(state.user?.income || 0);
+  elements.settingsInvestorLabel.textContent = state.user?.investorProfile || "Nao informado";
+  elements.settingsReportLabel.textContent =
+    state.transactions.length || state.investments.length || state.goals.length
+      ? "Planilha completa da conta"
+      : "Cadastre dados para enriquecer a planilha";
 }
 
 function requireLoginForPreview(event) {
@@ -2629,10 +2654,17 @@ function setAssistantMode() {
       elements.assistantMode.textContent = data.aiReady
         ? `${data.provider.toUpperCase()} configurado`
         : "Modo local";
+      elements.settingsAiLabel.textContent = data.aiReady
+        ? `${data.provider.toUpperCase()} · ${data.model || "modelo ativo"}`
+        : "Modo local";
+      if (elements.settingsStorageLabel) {
+        elements.settingsStorageLabel.textContent = data.database === "supabase" ? "Supabase" : "Local";
+      }
       elements.statusDot.classList.toggle("online", Boolean(data.aiReady));
     })
     .catch(() => {
       elements.assistantMode.textContent = "Modo local";
+      elements.settingsAiLabel.textContent = "Modo local";
       elements.statusDot.classList.remove("online");
     });
 }
